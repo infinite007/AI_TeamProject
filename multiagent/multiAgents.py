@@ -417,13 +417,13 @@ class Node():
         best_child = self.best_score_selection()
         return best_child.action
 
-    def gen_children(self, agent_index=0):
+    def gen_children(self):
         """Generate all possible child nodes in the game tree for the given agent_index"""
         children = []
-        legalMoves = self.state.getLegalActions(agent_index)
+        legalMoves = self.state.getLegalActions(self.agent_index)
         for i in range(len(legalMoves)):
             action = legalMoves[i]
-            child_state = self.state.generateSuccessor(agent_index, action)
+            child_state = self.state.generateSuccessor(self.agent_index, action)
             children.append(Node(child_state, action, parent=self))
         self.children = children
 
@@ -449,7 +449,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     def __init__(self):
         #TODO: Add to command line options
         self.num_simulations = 100 #Number of simulations to perform for each node
-        self.steps_allowed = 100 #Number of iterations of MCTS to do per timestep
+        self.steps_allowed = 2 #Number of iterations of MCTS to do per timestep
     
     def getAction(self, gameState):
         """
@@ -524,15 +524,16 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             if leaf.children:
                 #Should we simulate only some of the children?
                 for child in leaf.children:
-                    result = simulate(child)
-                    backpropagate(result, child)
+                    for i in range(self.num_simulations):
+                        result = simulate(child)
+                        backpropagate(result, child)
             else: #End state
                 result = leaf.state.isWin(), leaf.state.getScore()
             counter +=1
 
         #debugging
-        #print "GETTING ACTION"
-        #tree.print_tree()
+        print "GETTING ACTION"
+        tree.print_tree()
         Node.node_id = 0
 
         #Select action from child with best simulation stats
