@@ -21,6 +21,7 @@ from util import manhattanDistance
 from game import Directions
 import random, util
 from game import Agent
+from ghostAgents import DirectionalGhost
 
 class ReflexAgent(Agent):
     """
@@ -379,13 +380,12 @@ class Node():
         self.score_sum = 0 #Sum of scores over all simulations involving this node
         self.children = [] #Children expanded in the search tree
         self.node_id = Node.node_id #Unique node ID assigned to this node for debugging
-        Node.node_id += 1 
+        Node.node_id += 1
         
     def best_score_selection(self):
         """Returns child with the best average score over simulations"""
         #Should we consider wins?
-        #scores = [1.0 * child.num_wins / child.times_explored for child in self.children]
-        scores = [1.0 * child.score_sum / child.times_explored for child in self.children]        
+        scores = [1.0 * child.score_sum / child.times_explored if child.times_explored else 0.0 for child in self.children]        
         bestScore = max(scores)
         bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
@@ -395,7 +395,7 @@ class Node():
         """Weights random exploration vs. exploitation"""
         if random.random() < exploit_weight:
             #"EXPLOIT"
-            scores = [1.0 * child.score_sum / child.times_explored for child in self.children]
+            scores = [1.0 * child.score_sum / child.times_explored if child.times_explored else 0.0 for child in self.children]
             bestScore = max(scores)
             bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
             chosenIndex = random.choice(bestIndices) # Pick randomly among the best
@@ -424,7 +424,8 @@ class Node():
         for i in range(len(legalMoves)):
             action = legalMoves[i]
             child_state = self.state.generateSuccessor(self.agent_index, action)
-            children.append(Node(child_state, action, parent=self))
+            new_child = Node(child_state, action, parent=self)
+            children.append(new_child)
         self.children = children
 
     def print_tree(self, tab=0):
@@ -437,10 +438,10 @@ class Node():
         print " "*tab + "Wins", self.num_wins
         print " "*tab + "Score", self.score_sum
         print " "*tab + "Explored", self.times_explored
-        print " "*tab + "Children\n"
         for child in self.children:
             child.print_tree(tab+2)
-        
+
+#TODO: Model Ghosts in tree
 class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     """
       Monte Carlo Tree Search agent from R&N Chapter 5
@@ -448,8 +449,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
     def __init__(self):
         #TODO: Add to command line options
-        self.num_simulations = 100 #Number of simulations to perform for each node
-        self.steps_allowed = 2 #Number of iterations of MCTS to do per timestep
+        self.steps_allowed = 100 #Number of iterations of MCTS to do per timestep
     
     def getAction(self, gameState):
         """
@@ -493,17 +493,24 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             backpropagate(result, node.parent)
 
         def simulate(node):
-            #TODO: Simulate more realistic action sequences
             """Simulate game until end state starting at a given node and choosing all random actions"""
             agent_index = 1
             state = node.state
+            ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
+            
             while True:
                 while agent_index < state.getNumAgents():
-                    if state.isWin() or state.isLose():
+                    if state.isWin() or state.isLose():# or count == max_steps:
                         return state.isWin(), state.getScore()
-                    state, _ = random_transition(state, agent_index)
+                    if agent_index == 0:
+                        state, _ = random_transition(state, agent_index)
+                    else:
+                        ghost = ghosts[agent_index-1]
+                        state = state.generateSuccessor(agent_index, ghost.getAction(state))
+                        
                     agent_index += 1
                 agent_index = 0
+                #count += 1
                 
         ####################
         # MC tree search   #
@@ -513,7 +520,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         # 3. Simulate      #
         # 4. Backpropagate #
         ####################
-        
+
         #Instantiate root node
         tree = Node(gameState, action=None, parent=None)
         #Count number of iterations
@@ -522,18 +529,16 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             leaf = select(tree)
             expand(leaf)
             if leaf.children:
-                #Should we simulate only some of the children?
-                for child in leaf.children:
-                    for i in range(self.num_simulations):
-                        result = simulate(child)
-                        backpropagate(result, child)
+                child = random.choice(leaf.children)
+                result = simulate(child)
+                backpropagate(result, child)
             else: #End state
                 result = leaf.state.isWin(), leaf.state.getScore()
+                backpropagate(result, child)
             counter +=1
 
         #debugging
-        print "GETTING ACTION"
-        tree.print_tree()
+        #tree.print_tree()
         Node.node_id = 0
 
         #Select action from child with best simulation stats
