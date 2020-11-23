@@ -20,6 +20,7 @@
 from util import manhattanDistance
 from game import Directions
 import random, util
+import math
 from game import Agent
 from ghostAgents import DirectionalGhost
 
@@ -385,7 +386,7 @@ class Node():
     def best_score_selection(self):
         """Returns child with the best average score over simulations"""
         #Should we consider wins?
-        scores = [1.0 * child.score_sum / child.times_explored if child.times_explored else 0.0 for child in self.children]        
+        scores = [1.0 * child.score_sum / child.times_explored if child.times_explored else 0.0 for child in self.children]
         bestScore = max(scores)
         bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
@@ -393,15 +394,14 @@ class Node():
 
     def explore_exploit_selection(self, exploit_weight=0.8):
         """Weights random exploration vs. exploitation"""
-        if random.random() < exploit_weight:
-            #"EXPLOIT"
-            scores = [1.0 * child.score_sum / child.times_explored if child.times_explored else 0.0 for child in self.children]
-            bestScore = max(scores)
-            bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
-            chosenIndex = random.choice(bestIndices) # Pick randomly among the best
-        else:
-            #print "EXPLORE"
-            chosenIndex = random.choice(range(len(self.children))) 
+        #"EXPLOIT"
+        c = 1
+        scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
+
+        bestScore = max(scores)
+        bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
+        chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+
         return self.children[chosenIndex]
 
     def most_visited_selection(self):
@@ -441,6 +441,15 @@ class Node():
         for child in self.children:
             child.print_tree(tab+2)
 
+    def update_score(self, win, score):
+        self.times_explored +=1
+        if self.agent_index == 0:
+            self.num_wins += win
+            self.score_sum += score
+        else:
+            self.num_wins -= win
+            self.score_sum -= score
+
 #TODO: Model Ghosts in tree
 class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     """
@@ -449,7 +458,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
     def __init__(self):
         #TODO: Add to command line options
-        self.steps_allowed = 100 #Number of iterations of MCTS to do per timestep
+        self.steps_allowed = 300 #Number of iterations of MCTS to do per timestep
     
     def getAction(self, gameState):
         """
@@ -485,20 +494,29 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         def backpropagate(result, node):
             """Update stats of all nodes traversed in current simulation"""
             win, score = result
-            node.times_explored +=1
-            node.num_wins += win
-            node.score_sum += score
+            node.update_score(win, score)
             if node.parent is None:
                 return
             backpropagate(result, node.parent)
+
+        def state_heuristic(state):
+            """Returns the heuristic of the current state."""
+            Pos = state.getPacmanPosition()
+            Food = state.getFood()
+            closest_food = float('inf')
+            for current_food in Food.asList():
+                distance = manhattanDistance(Pos, current_food)
+                if closest_food > distance:
+                    closest_food = distance
+            return 0.5, state.getScore() - (0.25 * closest_food)
 
         def simulate(node):
             """Simulate game until end state starting at a given node and choosing all random actions"""
             agent_index = 1
             state = node.state
             ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
-            
-            while True:
+
+            for current_turn in range(2):
                 while agent_index < state.getNumAgents():
                     if state.isWin() or state.isLose():# or count == max_steps:
                         return state.isWin(), state.getScore()
@@ -511,6 +529,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                     agent_index += 1
                 agent_index = 0
                 #count += 1
+            return state_heuristic(state)
                 
         ####################
         # MC tree search   #
@@ -540,6 +559,5 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         #debugging
         #tree.print_tree()
         Node.node_id = 0
-
         #Select action from child with best simulation stats
         return tree.get_action()
