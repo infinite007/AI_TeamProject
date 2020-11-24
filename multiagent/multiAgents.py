@@ -397,7 +397,7 @@ class Node():
     def explore_exploit_selection(self, exploit_weight=0.8):
         """Weights random exploration vs. exploitation"""
         #"EXPLOIT"
-        c = 1
+        c = 0.3
         scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
 
         bestScore = max(scores)
@@ -462,7 +462,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     current_tree = None
     def __init__(self):
         #TODO: Add to command line options
-        self.steps_allowed = 200 #Number of iterations of MCTS to do per timestep
+        self.steps_allowed = 400 #Number of iterations of MCTS to do per timestep
     
     def getAction(self, gameState):
         """
@@ -520,7 +520,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             state = node.state
             ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
 
-            for current_turn in range(6):
+            for current_turn in range(3):
                 while agent_index < state.getNumAgents():
                     if state.isWin() or state.isLose():# or count == max_steps:
                         return state.isWin(), state.getScore()
@@ -586,5 +586,6 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         #tree.print_tree()
         Node.node_id = 0
         #Select action from child with best simulation stats
+
         MonteCarloTreeSearchAgent.current_tree = tree
         return tree.get_action()
