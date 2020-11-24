@@ -386,7 +386,9 @@ class Node():
     def best_score_selection(self):
         """Returns child with the best average score over simulations"""
         #Should we consider wins?
-        scores = [1.0 * child.score_sum / child.times_explored if child.times_explored else 0.0 for child in self.children]
+        #scores = [1.0 * child.score_sum / child.times_explored if child.times_explored else 0.0 for child in self.children]
+        scores = [(1.0 * child.num_wins * child.score_sum) / (child.times_explored ** 2) if child.times_explored else 0.0 for child in
+                  self.children]
         bestScore = max(scores)
         bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
@@ -424,7 +426,7 @@ class Node():
         for i in range(len(legalMoves)):
             action = legalMoves[i]
             child_state = self.state.generateSuccessor(self.agent_index, action)
-            new_child = Node(child_state, action, parent=self)
+            new_child = Node(child_state, action, parent=self, agent_index=(self.agent_index+1) % self.state.getNumAgents() )
             children.append(new_child)
         self.children = children
 
@@ -450,15 +452,17 @@ class Node():
             self.num_wins -= win
             self.score_sum -= score
 
+
 #TODO: Model Ghosts in tree
 class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     """
       Monte Carlo Tree Search agent from R&N Chapter 5
     """
 
+    current_tree = None
     def __init__(self):
         #TODO: Add to command line options
-        self.steps_allowed = 300 #Number of iterations of MCTS to do per timestep
+        self.steps_allowed = 200 #Number of iterations of MCTS to do per timestep
     
     def getAction(self, gameState):
         """
@@ -508,7 +512,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 distance = manhattanDistance(Pos, current_food)
                 if closest_food > distance:
                     closest_food = distance
-            return 0.5, state.getScore() - (0.25 * closest_food)
+            return 0.5, (0.5 * state.getScore()) - (0.25 * closest_food)
 
         def simulate(node):
             """Simulate game until end state starting at a given node and choosing all random actions"""
@@ -516,20 +520,34 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             state = node.state
             ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
 
-            for current_turn in range(2):
+            for current_turn in range(6):
                 while agent_index < state.getNumAgents():
                     if state.isWin() or state.isLose():# or count == max_steps:
                         return state.isWin(), state.getScore()
-                    if agent_index == 0:
-                        state, _ = random_transition(state, agent_index)
-                    else:
-                        ghost = ghosts[agent_index-1]
-                        state = state.generateSuccessor(agent_index, ghost.getAction(state))
+                    #if agent_index == 0:
+                    state, _ = random_transition(state, agent_index)
+                    #else:
+                        #ghost = ghosts[agent_index-1]
+                        #state = state.generateSuccessor(agent_index, ghost.getAction(state))
                         
                     agent_index += 1
                 agent_index = 0
                 #count += 1
             return state_heuristic(state)
+
+        def find_state(current_node, search_target, depth=0):
+            found_state = None
+            if current_node.agent_index == 0 and depth > 0:
+                if search_target == current_node.state:
+                    found_state = current_node
+
+            else:
+                for current_child in current_node.children:
+                    found_state = find_state(current_child, search_target, 1)
+                    if found_state is not None:
+                        break
+            return found_state
+
                 
         ####################
         # MC tree search   #
@@ -541,7 +559,15 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         ####################
 
         #Instantiate root node
-        tree = Node(gameState, action=None, parent=None)
+
+        if MonteCarloTreeSearchAgent.current_tree is not None:
+            tree = find_state(MonteCarloTreeSearchAgent.current_tree, gameState, 0)
+        else:
+            tree = None
+
+        if tree is None:
+            tree = Node(gameState, action=None, parent=None)
+
         #Count number of iterations
         counter = 0        
         while counter < self.steps_allowed:
@@ -553,11 +579,12 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 backpropagate(result, child)
             else: #End state
                 result = leaf.state.isWin(), leaf.state.getScore()
-                backpropagate(result, child)
+                backpropagate(result, leaf)
             counter +=1
 
         #debugging
         #tree.print_tree()
         Node.node_id = 0
         #Select action from child with best simulation stats
+        MonteCarloTreeSearchAgent.current_tree = tree
         return tree.get_action()
