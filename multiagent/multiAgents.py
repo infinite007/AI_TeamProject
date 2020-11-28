@@ -372,6 +372,7 @@ class Node():
          parent: parent Node
          agent_index: agent modeled by this mode (Pacman only, currently)
         """
+        self.agent_index=agent_index
         self.state = state
         self.action = action
         self.parent = parent 
@@ -387,9 +388,9 @@ class Node():
         """Returns child with the best average score over simulations"""
         #Should we consider wins?
         #scores = [1.0 * child.score_sum / child.times_explored if child.times_explored else 0.0 for child in self.children]
-        scores = [(1.0 * child.num_wins * child.score_sum) / (child.times_explored ** 2) if child.times_explored else 0.0 for child in
-                  self.children]
-        bestScore = max(scores)
+        #scores = [(1.0 * child.num_wins * child.score_sum) / (child.times_explored ** 2) if child.times_explored else 0.0 for child in self.children]
+        scores = [(child.num_wins) / child.times_explored if child.times_explored else 0.0 for child in self.children]
+        bestScore = min(scores)
         bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
         return self.children[chosenIndex]
@@ -398,8 +399,8 @@ class Node():
         """Weights random exploration vs. exploitation"""
         #"EXPLOIT"
         c = 0.3
-        scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
-
+        #scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
+        scores = [(1.0 * child.num_wins / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
         bestScore = max(scores)
         bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
@@ -430,9 +431,20 @@ class Node():
             children.append(new_child)
         self.children = children
 
+    def gen_children_pure_MC(self):
+        """Generate all possible child nodes in the game tree for the given agent_index"""
+        children = []
+        legalMoves = self.state.getLegalActions(self.agent_index)
+        for i in range(len(legalMoves)):
+            action = legalMoves[i]
+            child_state = self.state.generateSuccessor(self.agent_index, action)
+            new_child = Node(child_state, action, parent=self, agent_index=0)
+            children.append(new_child)
+        self.children = children
+
     def print_tree(self, tab=0):
         """Helper function for debugging"""
-        print " "*tab + "ID", self.node_id
+        print " "*tab + "ID", self.node_id, "AGENT", self.agent_index
         if self.parent:
             print " "*tab + "Parent", self.parent.node_id
         else:
@@ -449,7 +461,7 @@ class Node():
             self.num_wins += win
             self.score_sum += score
         else:
-            self.num_wins -= win
+            self.num_wins += not win
             self.score_sum -= score
 
 
@@ -462,7 +474,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     current_tree = None
     def __init__(self):
         #TODO: Add to command line options
-        self.steps_allowed = 400 #Number of iterations of MCTS to do per timestep
+        self.steps_allowed = 200 #Number of iterations of MCTS to do per timestep
     
     def getAction(self, gameState):
         """
@@ -479,6 +491,26 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 # Choose random action
                 chosenAction = random.choice(legalMoves) 
                 return state.generateSuccessor(agent_index, chosenAction), chosenAction
+            else: #EndState - no more moves
+                return None
+
+        def epsilon_greedy_policy(state, epsilon=0.9, agent_index=0):
+            """
+              Return action that would result in best score with probability epsilon, 
+              otherwise, return random action
+            """
+            legalMoves = state.getLegalActions(agent_index)
+            if legalMoves:
+                if random.random() < epsilon:
+                    scores = [state.generateSuccessor(agent_index, a).getScore() for a in legalMoves]
+                    bestIndices = [index for index in range(len(scores)) if scores[index] == max(scores)]
+                    chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+                    chosenAction = legalMoves[chosenIndex]
+                    return state.generateSuccessor(agent_index, chosenAction), chosenAction
+                else:
+                    # Choose random action
+                    chosenAction = random.choice(legalMoves) 
+                    return state.generateSuccessor(agent_index, chosenAction), chosenAction
             else: #EndState - no more moves
                 return None
             
@@ -514,26 +546,38 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                     closest_food = distance
             return 0.5, (0.5 * state.getScore()) - (0.25 * closest_food)
 
-        def simulate(node):
+        def simulate(node, agent_index):
             """Simulate game until end state starting at a given node and choosing all random actions"""
-            agent_index = 1
             state = node.state
+            print "INITIAL STATE"
+            print state
             ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
-
-            for current_turn in range(3):
+            max_steps = 10
+            steps = 0
+            while steps < max_steps:
+                print "****STEP {}".format(steps)
                 while agent_index < state.getNumAgents():
                     if state.isWin() or state.isLose():# or count == max_steps:
                         return state.isWin(), state.getScore()
-                    #if agent_index == 0:
-                    state, _ = random_transition(state, agent_index)
-                    #else:
-                        #ghost = ghosts[agent_index-1]
-                        #state = state.generateSuccessor(agent_index, ghost.getAction(state))
-                        
+                    if agent_index == 0:
+                        #TODO: learn policy approximation
+                        #state, _ = random_transition(state, agent_index)
+                        state, _ = epsilon_greedy_policy(state, agent_index=agent_index)
+                    else:
+                        ghost = ghosts[agent_index-1]
+                        state = state.generateSuccessor(agent_index, ghost.getAction(state))
+                    print "SIM STATE AGENT {}".format(agent_index)
+                    print state
+
                     agent_index += 1
                 agent_index = 0
-                #count += 1
-            return state_heuristic(state)
+                steps += 1
+            if not state.isLose():
+                return 0.5, state.getScore()
+            else:
+                print "LOSE"
+                return 0, state.getScore()
+            #return state_heuristic(state)
 
         def find_state(current_node, search_target, depth=0):
             found_state = None
@@ -560,13 +604,13 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
         #Instantiate root node
 
-        if MonteCarloTreeSearchAgent.current_tree is not None:
-            tree = find_state(MonteCarloTreeSearchAgent.current_tree, gameState, 0)
-        else:
-            tree = None
+        #if MonteCarloTreeSearchAgent.current_tree is not None:
+        #    tree = find_state(MonteCarloTreeSearchAgent.current_tree, gameState, 0)
+        #else:
+        #    tree = None
 
-        if tree is None:
-            tree = Node(gameState, action=None, parent=None)
+        #if tree is None:
+        tree = Node(gameState, action=None, parent=None)
 
         #Count number of iterations
         counter = 0        
@@ -575,17 +619,155 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             expand(leaf)
             if leaf.children:
                 child = random.choice(leaf.children)
-                result = simulate(child)
+                result = simulate(child, agent_index=child.agent_index+1)
                 backpropagate(result, child)
             else: #End state
                 result = leaf.state.isWin(), leaf.state.getScore()
                 backpropagate(result, leaf)
             counter +=1
+            print "STEP {}".format(counter)
+            tree.print_tree()
 
         #debugging
         #tree.print_tree()
         Node.node_id = 0
-        #Select action from child with best simulation stats
 
+        #Select action from child with best simulation stats
         MonteCarloTreeSearchAgent.current_tree = tree
+        for child in tree.children:
+            print child.action, child.score_sum, child.times_explored
+        print "ACTION", tree.get_action()
+        return tree.get_action()
+
+
+    #TODO: Model Ghosts in tree
+class PureMonteCarloTreeSearchAgent(MultiAgentSearchAgent):
+    """
+      Monte Carlo Tree Search agent from R&N Chapter 5
+    """
+
+    current_tree = None
+    def __init__(self):
+        #TODO: Add to command line options
+        self.steps_allowed = 100 #Number of iterations of MCTS to do per timestep
+    
+    def getAction(self, gameState):
+        """
+          Returns the action chosen by MC Tree Search Agent
+          Simulations are implemented with all random moves
+        """
+
+        def random_transition(state, agent_index):
+            """Return a randomly selected (state, action) tuple for the given agent_index
+               Return None if there are no possible moves from this state """
+            # Collect legal moves and successor states
+            legalMoves = state.getLegalActions(agent_index)
+            if legalMoves:
+                # Choose random action
+                chosenAction = random.choice(legalMoves) 
+                return state.generateSuccessor(agent_index, chosenAction), chosenAction
+            else: #EndState - no more moves
+                return None
+
+        def epsilon_greedy_policy(state, epsilon=0.9, agent_index=0):
+            """
+              Return action that would result in best score with probability epsilon, 
+              otherwise, return random action
+            """
+            legalMoves = state.getLegalActions(agent_index)
+            if legalMoves:
+                draw =random.random()
+                if draw < epsilon:
+                    scores = [state.generateSuccessor(agent_index, a).getScore() for a in legalMoves]
+                    bestIndices = [index for index in range(len(scores)) if scores[index] == max(scores)]
+                    chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+                    chosenAction = legalMoves[chosenIndex]
+                    return state.generateSuccessor(agent_index, chosenAction), chosenAction
+                else:
+                    # Choose random action
+                    chosenAction = random.choice(legalMoves)
+                    return state.generateSuccessor(agent_index, chosenAction), chosenAction
+            else: #EndState - no more moves
+                return None
+                        
+        def select(tree):
+            """Selects a leaf node to expand in the search tree"""
+            return tree
+
+        def expand(leaf):
+            """Expands all children of the leaf node"""
+            leaf.gen_children_pure_MC()
+                
+        def backpropagate(result, node):
+            """Update stats of all nodes traversed in current simulation"""
+            win, score = result
+            node.update_score(win, score)
+            if node.parent is None:
+                return
+            backpropagate(result, node.parent)
+
+        def simulate(node, agent_index):
+            """Simulate game until end state starting at a given node and choosing all random actions"""
+            state = node.state
+            print "INITIAL STATE"
+            print state
+            ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
+            max_steps = 10
+            steps = 0
+            while steps < max_steps:
+                print "****STEP {}".format(steps)
+                while agent_index < state.getNumAgents():
+                    if state.isWin() or state.isLose():# or count == max_steps:
+                        return state.isWin(), state.getScore()
+                    if agent_index == 0:
+                        #TODO: learn policy approximation
+                        #state, _ = random_transition(state, agent_index)
+                        state, action = epsilon_greedy_policy(state, agent_index=0)
+                    else:
+                        ghost = ghosts[agent_index-1]
+                        state = state.generateSuccessor(agent_index, ghost.getAction(state))
+                    print "SIM STATE AGENT {}".format(agent_index)
+                    print state
+
+                    agent_index += 1
+                agent_index = 0
+                steps += 1
+            if not state.isLose():
+                return 0.5, state.getScore()
+            else:
+                print "LOSE"
+                return 0, state.getScore()
+            #return state_heuristic(state)
+                
+        ####################
+        # MC tree search   #
+        #                  #
+        # 1. Select        #
+        # 2. Expand        #
+        # 3. Simulate      #
+        # 4. Backpropagate #
+        ####################
+
+        #Instantiate root node
+        tree = Node(gameState, action=None, parent=None)
+
+        #Count number of iterations
+        counter = 0
+        
+        expand(tree)
+        while counter < self.steps_allowed:
+            if tree.children:
+                for child in tree.children:
+                    result = simulate(child, agent_index=1)
+                    backpropagate(result, child)
+            else: #End state
+                result = tree.state.isWin(), tree.state.getScore()
+                backpropagate(result, tree)
+            counter +=1
+
+        #debugging
+        tree.print_tree()
+        Node.node_id = 0
+
+        #Select action from child with best simulation stats
         return tree.get_action()
