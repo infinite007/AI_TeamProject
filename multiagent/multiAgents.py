@@ -502,7 +502,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
       Monte Carlo Tree Search agent from R&N Chapter 5
     """
 
-    #current_tree = None
+    current_tree = None
     def __init__(self):
         #current_tree = None
         #TODO: Add to command line options
@@ -651,15 +651,15 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
 
         # Instantiate root node
-        #if MonteCarloTreeSearchAgent.current_tree is not None and self.reuse_tree:
-        #    tree = find_state(MonteCarloTreeSearchAgent.current_tree, gameState, 0)
-        #else:
-        #   tree = None
+        if MonteCarloTreeSearchAgent.current_tree is not None and self.reuse_tree:
+            tree = find_state(MonteCarloTreeSearchAgent.current_tree, gameState, 0)
+        else:
+           tree = None
 
-        #if tree is None:
-        #    tree = Node(gameState, action=None, parent=None)
-        #else:
-        #    tree.parent = None
+        if tree is None:
+            tree = Node(gameState, action=None, parent=None)
+        else:
+            tree.parent = None
         tree = Node(gameState, action=None, parent=None)
         
         #Count number of iterations
@@ -681,7 +681,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         #Node.node_id = 0
         #Select action from child with best simulation stats
 
-        #MonteCarloTreeSearchAgent.current_tree = tree
+        MonteCarloTreeSearchAgent.current_tree = tree
         action = tree.get_action()
         return action
 
