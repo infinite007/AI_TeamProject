@@ -510,6 +510,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
     current_tree = None
 
+
     def __init__(self, steps='200', reuse='False', simDepth='3', chooseChld='best_combination', exploreAlg='eg', exploreVar='',
                  randSim='False', pacmanEps='0.9'):
         #TODO: Add to command line options
@@ -666,6 +667,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         else:
             tree = None
 
+
         if tree is None:
             tree = Node(gameState, action=None, parent=None)
         else:
@@ -692,5 +694,6 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
         MonteCarloTreeSearchAgent.current_tree = tree
         action = tree.get_action(self.action_selection)
+
         return action
 
