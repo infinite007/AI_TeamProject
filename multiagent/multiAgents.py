@@ -414,6 +414,14 @@ class Node():
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
         return self.children[chosenIndex]
 
+    def most_visited_selection(self):
+        scores = [child.times_explored if child.times_explored else 0.0 for child in self.children]
+
+        bestScore = max(scores)
+        bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
+        chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+        return self.children[chosenIndex]
+
     def explore_exploit_selection(self, explore_algorithm='ucb', explore_variable=''):
         if explore_algorithm == 'ucb':
             if explore_variable == '':
@@ -463,6 +471,8 @@ class Node():
             best_child = self.best_win_potential_selection()
         elif best_child_algorithm == 'best_combination':
             best_child = self.best_win_and_score_selection()
+        elif best_child_algorithm == 'most_visited':
+            best_child = self.most_visited_selection()
         else:
             best_child = self.best_score_selection()
         return best_child.action
@@ -495,10 +505,10 @@ class Node():
     def update_score(self, win, score):
         self.times_explored +=1
         if self.agent_index == 0:
-            self.num_wins -= win
+            self.num_wins -= int(win)
             self.score_sum -= score
         else:
-            self.num_wins += win
+            self.num_wins += int(win)
             self.score_sum += score
 
 
