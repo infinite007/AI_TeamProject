@@ -414,11 +414,17 @@ class Node():
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
         return self.children[chosenIndex]
 
-    def explore_exploit_selection(self, explore_algorithm='ucb'):
+    def explore_exploit_selection(self, explore_algorithm='ucb', explore_variable=''):
         if explore_algorithm == 'ucb':
-            return self.upper_confidence_bound()
+            if explore_variable == '':
+                return self.upper_confidence_bound()
+            else:
+                return self.upper_confidence_bound(float(explore_variable))
         else:
-            return self.epsilon_greed_search()
+            if explore_variable == '':
+                return self.epsilon_greed_search()
+            else:
+                return self.epsilon_greed_search(float(explore_variable))
 
     def epsilon_greed_search(self, exploit_weight=0.8):
         """Weights random exploration vs. exploitation"""
@@ -433,7 +439,7 @@ class Node():
             chosenIndex = random.choice(range(len(self.children)))
         return self.children[chosenIndex]
 
-    def upper_confidence_bound(self, c=50):
+    def upper_confidence_bound(self, c=50.0):
         """Returns the child with the highest upper confidence bound score."""
         scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
 
@@ -503,15 +509,22 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     """
 
     current_tree = None
-    def __init__(self):
-        #current_tree = None
-        #TODO: Add to command line options
-        
 
-        self.steps_allowed = 200  # Number of iterations of MCTS to do per timestep
-        self.reuse_tree = True   # Whether to reuse the tree created last time this class was called
-        self.simulation_depth = 3  # Depth to play out a simulation before using a heuristic to approximate the score
-    
+
+    def __init__(self, steps='200', reuse='False', simDepth='3', chooseChld='best_combination', exploreAlg='eg', exploreVar='',
+                 randSim='False', pacmanEps='0.9'):
+        #TODO: Add to command line options
+
+        self.steps_allowed = int(steps)  # Number of iterations of MCTS to do per timestep
+        self.reuse_tree = bool(reuse)   # Whether to reuse the tree created last time this class was called
+        self.simulation_depth = int(simDepth)  # Depth to play out a simulation before using a heuristic to approximate the score
+        self.action_selection = chooseChld  # Chosen algorithm to pick the best next action to take.
+        self.action_exploration = exploreAlg  # Chosen algorithm to pick the best next action to explore.
+        self.explore_algorithm_variable = exploreVar  # Parameter value used to balance exploration and exploitation.
+        self.random_simulation_moves = bool(randSim)  # Whether Pacman's moves in the simulation will be random.
+        self.epsilon_pacman_simluation = float(pacmanEps)  # Epsilon value for epsilon greedy search if Pacman's simulation values aren't random.
+
+
     def getAction(self, gameState):
         """
           Returns the action chosen by MC Tree Search Agent
@@ -556,8 +569,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             if not tree.children: #Leaf
                 return tree
             #TODO: Write a better SELECT method
-            #best_child = tree.best_score_selection()
-            best_child = tree.explore_exploit_selection()
+            best_child = tree.explore_exploit_selection(self.action_exploration, self.explore_algorithm_variable)
             return select(best_child)
 
         def expand(leaf):
@@ -614,7 +626,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                         if agent_index == 0:
                             #TODO: learn policy approximation
                             #state, _ = random_transition(state, agent_index)
-                            state, action = epsilon_greedy_policy(state, agent_index=0)
+                            state, action = epsilon_greedy_policy(state, epsilon=self.epsilon_pacman_simluation, agent_index=0)
                         else:
                             ghost = ghosts[agent_index-1]
                             state = state.generateSuccessor(agent_index, ghost.getAction(state))
@@ -624,7 +636,6 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                     agent_index = 0
                 del(ghosts)
                 return state_heuristic(state)
-            
 
         def find_state(current_node, search_target, depth=0):
             found_state = None
@@ -654,13 +665,13 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         if MonteCarloTreeSearchAgent.current_tree is not None and self.reuse_tree:
             tree = find_state(MonteCarloTreeSearchAgent.current_tree, gameState, 0)
         else:
-           tree = None
+            tree = None
+
 
         if tree is None:
             tree = Node(gameState, action=None, parent=None)
         else:
             tree.parent = None
-        tree = Node(gameState, action=None, parent=None)
         
         #Count number of iterations
         counter = 0        
@@ -669,7 +680,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             expand(leaf)
             if leaf.children:
                 child = random.choice(leaf.children)
-                result = simulate(child, child.agent_index+1)
+                result = simulate(child, child.agent_index + 1, self.random_simulation_moves)
                 backpropagate(result, child)
             else: #End state
                 result = leaf.state.isWin(), leaf.state.getScore()
@@ -682,7 +693,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         #Select action from child with best simulation stats
 
         MonteCarloTreeSearchAgent.current_tree = tree
-        action = tree.get_action()
+        action = tree.get_action(self.action_selection)
+
         return action
 
-    
