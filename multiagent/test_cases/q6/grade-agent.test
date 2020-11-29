@@ -2,7 +2,7 @@ class: "EvalAgentTest"
 
 agentName: "MonteCarloTreeSearchAgent"
 layoutName: "mediumClassic"
-agentArgs: "steps=400,reuse=False,simDepth=3,chooseChld=best_combination,exploreAlg=eg,exploreVar=0.5,randSim=False,pacmanEps=0.9"
+agentArgs: "steps=400,reuse=False,simDepth=3,chooseChld=best_combination,exploreAlg=eg,exploreVar=0.8,randSim=False,pacmanEps=0.9"
 
 
 maxTime: "240"
