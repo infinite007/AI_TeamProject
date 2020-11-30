@@ -364,7 +364,7 @@ class Node():
     """
      This class provides a data structure to store nodes in our search tree.
     """
-    #node_id = 0 #Unique node ID for debugging 
+    #node_id = 0 #Unique node ID for debugging
 
     def __init__(self, state, action, parent, agent_index=0):
         """
@@ -384,7 +384,7 @@ class Node():
         self.children = [] #Children expanded in the search tree
         #self.node_id = Node.node_id #Unique node ID assigned to this node for debugging
         #Node.node_id += 1
-        
+
     def best_score_selection(self):
         """Returns child with the best average score over simulations"""
         #Should we consider wins?
@@ -407,20 +407,13 @@ class Node():
     def best_win_and_score_selection(self):
         """Returns the child with highest metric that balanced score and survivability."""
         # TODO: adjust this function so it works better. The agent still chooses to run into Pacman when it doesn't need to.
-        scores = [1.0 * child.score_sum / child.times_explored + (500.0 * child.num_wins / child.times_explored) if child.times_explored else 0.0 for child in self.children]
+        scores = [1.0 * child.score_sum / child.times_explored + (100.0 * child.num_wins / child.times_explored) if child.times_explored else -float('inf') for child in self.children]
 
         bestScore = max(scores)
         bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
         chosenIndex = random.choice(bestIndices) # Pick randomly among the best
         return self.children[chosenIndex]
 
-    def most_visited_selection(self):
-        scores = [child.times_explored if child.times_explored else 0.0 for child in self.children]
-
-        bestScore = max(scores)
-        bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
-        chosenIndex = random.choice(bestIndices) # Pick randomly among the best
-        return self.children[chosenIndex]
 
     def explore_exploit_selection(self, explore_algorithm='ucb', explore_variable=''):
         if explore_algorithm == 'ucb':
@@ -449,6 +442,7 @@ class Node():
 
     def upper_confidence_bound(self, c=50.0):
         """Returns the child with the highest upper confidence bound score."""
+
         scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
 
         bestScore = max(scores)
@@ -520,19 +514,21 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     current_tree = None
 
 
+
     def __init__(self, steps='200', reuse='False', simDepth='3', chooseChld='best_combination', exploreAlg='eg', exploreVar='',
-                 randSim='False', pacmanEps='0.9'):
+                 randSim='False', pacmanEps='0.9', earlyStop='False', tillBored='100'):
         #TODO: Add to command line options
 
         self.steps_allowed = int(steps)  # Number of iterations of MCTS to do per timestep
-        self.reuse_tree = bool(reuse)   # Whether to reuse the tree created last time this class was called
+        self.reuse_tree = reuse == 'True'   # Whether to reuse the tree created last time this class was called
         self.simulation_depth = int(simDepth)  # Depth to play out a simulation before using a heuristic to approximate the score
         self.action_selection = chooseChld  # Chosen algorithm to pick the best next action to take.
         self.action_exploration = exploreAlg  # Chosen algorithm to pick the best next action to explore.
         self.explore_algorithm_variable = exploreVar  # Parameter value used to balance exploration and exploitation.
-        self.random_simulation_moves = bool(randSim)  # Whether Pacman's moves in the simulation will be random.
+        self.random_simulation_moves = randSim == 'True'  # Whether Pacman's moves in the simulation will be random.
         self.epsilon_pacman_simluation = float(pacmanEps)  # Epsilon value for epsilon greedy search if Pacman's simulation values aren't random.
-
+        self.early_stop = earlyStop == 'True'
+        self.steps_till_bored = int(tillBored)
 
     def getAction(self, gameState):
         """
@@ -683,7 +679,10 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             tree.parent = None
         
         #Count number of iterations
-        counter = 0        
+        bored_counter = 0
+        counter = 0
+
+        last_top_action = -1
         while counter < self.steps_allowed:
             leaf = select(tree)
             expand(leaf)
@@ -695,6 +694,15 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 result = leaf.state.isWin(), leaf.state.getScore()
                 backpropagate(result, leaf)
             counter +=1
+            if self.early_stop:
+                current_top_action = tree.get_action(self.action_selection)
+                if current_top_action == last_top_action:
+                    bored_counter += 1
+                    if bored_counter >= self.steps_till_bored:
+                        break
+                else:
+                    last_top_action = current_top_action
+                    bored_counter = 0
 
         #debugging
         #tree.print_tree()
