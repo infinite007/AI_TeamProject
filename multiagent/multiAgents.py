@@ -513,7 +513,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
     current_tree = None
 
-    def __init__(self, steps='200', reuse='False', simDepth='3', chooseChld='best_combination', exploreAlg='eg', exploreVar='',
+    def __init__(self, steps='200', reuse='False', simDepth='3', choose_action_algo='most_visited', exploreAlg='eg', exploreVar='',
                  randSim='False', pacmanEps='0.9', earlyStop='False', tillBored='100'):
         #TODO: Add to command line options
         
@@ -522,7 +522,6 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         self.steps_allowed = int(steps)  # Number of iterations of MCTS to do per timestep
         self.reuse_tree = reuse == 'True'   # Whether to reuse the tree created last time this class was called
         self.simulation_depth = int(simDepth)  # Depth to play out a simulation before using a heuristic to approximate the score
-        self.action_selection = chooseChld  # Chosen algorithm to pick the best next action to take.
         self.action_exploration = exploreAlg  # Chosen algorithm to pick the best next action to explore.
         self.explore_algorithm_variable = exploreVar  # Parameter value used to balance exploration and exploitation.
         self.random_simulation_moves = randSim == 'True'  # Whether Pacman's moves in the simulation will be random.
