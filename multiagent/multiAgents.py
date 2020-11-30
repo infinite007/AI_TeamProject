@@ -17,13 +17,13 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-from util import manhattanDistance
+from util import manhattanDistance, Counter
 from game import Directions
 import random, util
 import math
 from game import Agent
 from ghostAgents import DirectionalGhost
-import gc
+from featureExtractors import SimpleExtractor
 
 class ReflexAgent(Agent):
     """
@@ -364,7 +364,9 @@ class Node():
     """
      This class provides a data structure to store nodes in our search tree.
     """
-    #node_id = 0 #Unique node ID for debugging
+
+    node_id = 0 #Unique node ID for debugging 
+
 
     def __init__(self, state, action, parent, agent_index=0):
         """
@@ -382,9 +384,10 @@ class Node():
         self.num_wins = 0 #Number of simulation wins that include this node
         self.score_sum = 0 #Sum of scores over all simulations involving this node
         self.children = [] #Children expanded in the search tree
-        #self.node_id = Node.node_id #Unique node ID assigned to this node for debugging
-        #Node.node_id += 1
 
+        self.node_id = Node.node_id #Unique node ID assigned to this node for debugging
+        Node.node_id += 1
+        
     def best_score_selection(self):
         """Returns child with the best average score over simulations"""
         #Should we consider wins?
@@ -416,16 +419,11 @@ class Node():
 
 
     def explore_exploit_selection(self, explore_algorithm='ucb', explore_variable=''):
+
         if explore_algorithm == 'ucb':
-            if explore_variable == '':
-                return self.upper_confidence_bound()
-            else:
-                return self.upper_confidence_bound(float(explore_variable))
+            return self.upper_confidence_bound()
         else:
-            if explore_variable == '':
-                return self.epsilon_greed_search()
-            else:
-                return self.epsilon_greed_search(float(explore_variable))
+            return self.epsilon_greed_search()
 
     def epsilon_greed_search(self, exploit_weight=0.8):
         """Weights random exploration vs. exploitation"""
@@ -440,7 +438,7 @@ class Node():
             chosenIndex = random.choice(range(len(self.children)))
         return self.children[chosenIndex]
 
-    def upper_confidence_bound(self, c=50.0):
+    def upper_confidence_bound(self, c=50):
         """Returns the child with the highest upper confidence bound score."""
 
         scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
@@ -499,7 +497,9 @@ class Node():
     def update_score(self, win, score):
         self.times_explored +=1
         if self.agent_index == 0:
-            self.num_wins += 1 - float(win)
+
+            self.num_wins += not win
+
             self.score_sum -= score
         else:
             self.num_wins += float(win)
@@ -513,22 +513,24 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
     current_tree = None
 
-
-
-    def __init__(self, steps='200', reuse='False', simDepth='3', chooseChld='best_combination', exploreAlg='eg', exploreVar='',
+    def __init__(self, steps='200', reuse='False', simDepth='3', choose_action_algo='most_visited', exploreAlg='eg', exploreVar='',
                  randSim='False', pacmanEps='0.9', earlyStop='False', tillBored='100'):
         #TODO: Add to command line options
+        
+
 
         self.steps_allowed = int(steps)  # Number of iterations of MCTS to do per timestep
         self.reuse_tree = reuse == 'True'   # Whether to reuse the tree created last time this class was called
         self.simulation_depth = int(simDepth)  # Depth to play out a simulation before using a heuristic to approximate the score
-        self.action_selection = chooseChld  # Chosen algorithm to pick the best next action to take.
         self.action_exploration = exploreAlg  # Chosen algorithm to pick the best next action to explore.
         self.explore_algorithm_variable = exploreVar  # Parameter value used to balance exploration and exploitation.
         self.random_simulation_moves = randSim == 'True'  # Whether Pacman's moves in the simulation will be random.
         self.epsilon_pacman_simluation = float(pacmanEps)  # Epsilon value for epsilon greedy search if Pacman's simulation values aren't random.
         self.early_stop = earlyStop == 'True'
         self.steps_till_bored = int(tillBored)
+        self.featExtractor = SimpleExtractor()
+        self.choose_action_algo = choose_action_algo
+
 
     def getAction(self, gameState):
         """
@@ -548,6 +550,20 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             else: #EndState - no more moves
                 return None
 
+        def q_learning_policy(state):
+            #Learned in Project 4
+           # weights = Counter({'eats-food': 272.11667733110255, 'closest-food': -3.896066833142678, 'bias': -24.998479513342076, '#-of-ghosts-1-step-away': -412.72505862648853})
+            weights = Counter({'eats-food': 326.615053847113, 'closest-food': -22.920237767606736, 'bias': 0.6124765039597753, '#-of-ghosts-1-step-away': -2442.2537145683605})
+            legalMoves = state.getLegalActions(0)
+            if legalMoves:
+                scores = [weights*self.featExtractor.getFeatures(state,a) for a in legalMoves]
+                bestIndices = [index for index in range(len(scores)) if scores[index] == max(scores)]
+                chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+                chosenAction = legalMoves[chosenIndex]
+                return state.generateSuccessor(0, chosenAction), chosenAction
+            else:
+                return None
+
         def epsilon_greedy_policy(state, epsilon=0.9, agent_index=0):
             """
               Return action that would result in best score with probability epsilon, 
@@ -556,9 +572,10 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             legalMoves = state.getLegalActions(agent_index)
             if legalMoves:
                 if random.random() < epsilon:
+                    #TODO: better policy
                     scores = [state.generateSuccessor(agent_index, a).getScore() for a in legalMoves]
+                    #scores = [state_heuristic1(state.generateSuccessor(agent_index, a))[1] for a in legalMoves]
                     bestIndices = [index for index in range(len(scores)) if scores[index] == max(scores)]
-                    del(scores)
                     chosenIndex = random.choice(bestIndices) # Pick randomly among the best
                     chosenAction = legalMoves[chosenIndex]
                     return state.generateSuccessor(agent_index, chosenAction), chosenAction
@@ -574,7 +591,8 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             if not tree.children: #Leaf
                 return tree
             #TODO: Write a better SELECT method
-            best_child = tree.explore_exploit_selection(self.action_exploration, self.explore_algorithm_variable)
+            #best_child = tree.best_score_selection()
+            best_child = tree.explore_exploit_selection()
             return select(best_child)
 
         def expand(leaf):
@@ -603,8 +621,45 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                     closest_food = distance
             return 0.5, (0.5 * state.getScore()) + 400 - (0.25 * closest_food)
 
+        def state_heuristic1(state):
+            """Returns the heuristic of the current state."""
+            caps = state.getCapsules()
+            Pos = state.getPacmanPosition()
+            Food = state.getFood()
+            GhostStates = state.getGhostStates()
+            ScaredTimes = [ghostState.scaredTimer for ghostState in GhostStates]
+            GhostPositions = [g.getPosition() for g in GhostStates]
+            #Get the food
+            score = -1*Food.count()
+            score += -1*len(caps)
+            #Stay away from ghosts or try to eat them if they're scared
+            ghost_dists = [util.manhattanDistance(Pos,gPos) for gPos in GhostPositions]
+            for i in range(len(ghost_dists)):
+                if ScaredTimes[i] > ghost_dists[i]:
+                    score += 1
+                else:
+                    if ghost_dists[i] < 2:
+                        score += -100
 
-        def simulate(node, agent_index=0, random_moves=False):
+            #Get closer to food
+            if Food.count() > 0:
+                FoodPos = Food.asList()
+                min_food_dist = min([util.manhattanDistance(Pos,fPos) for fPos in FoodPos])
+                score += -1*min_food_dist
+            return 0.5, score + state.getScore()
+
+        def learned_heuristic(state):
+            #Learned in Project 4
+            weights = Counter({'closest-food': -2.9590833461811363, 'bias': 205.60863391209026, '#-of-ghosts-1-step-away': -119.89950003939676, 'eats-food': 270.2008225113668})
+
+            legalMoves = state.getLegalActions(0)
+            if legalMoves:
+                score = max([weights*self.featExtractor.getFeatures(state,a) for a in legalMoves])
+                return 0.5, score
+            else:
+                return state.isWin(), state.getScore()
+
+        def simulate(node, agent_index=0, random_moves=False, heuristic_fn=state_heuristic):
             """Simulate game until end state starting at a given node and choosing all random actions"""
             if random_moves:
                 agent_index = 1
@@ -618,7 +673,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
                         agent_index += 1
                     agent_index = 0
-                return state_heuristic(state)
+                return heuristic_fn(state)
             else:
                 state = node.state
                 ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
@@ -626,12 +681,10 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 for current_turn in range(self.simulation_depth):
                     while agent_index < state.getNumAgents():
                         if state.isWin() or state.isLose():# or count == max_steps:
-                            del(ghosts)
                             return state.isWin(), state.getScore()
                         if agent_index == 0:
-                            #TODO: learn policy approximation
-                            #state, _ = random_transition(state, agent_index)
-                            state, action = epsilon_greedy_policy(state, epsilon=self.epsilon_pacman_simluation, agent_index=0)
+                            state, action = q_learning_policy(state)
+                            #state, action = epsilon_greedy_policy(state, agent_index=0)
                         else:
                             ghost = ghosts[agent_index-1]
                             state = state.generateSuccessor(agent_index, ghost.getAction(state))
@@ -639,8 +692,9 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
                         agent_index += 1
                     agent_index = 0
-                del(ghosts)
-                return state_heuristic(state)
+
+                return heuristic_fn(state)
+            
 
         def find_state(current_node, search_target, depth=0):
             found_state = None
@@ -670,13 +724,13 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         if MonteCarloTreeSearchAgent.current_tree is not None and self.reuse_tree:
             tree = find_state(MonteCarloTreeSearchAgent.current_tree, gameState, 0)
         else:
-            tree = None
-
+           tree = None
 
         if tree is None:
             tree = Node(gameState, action=None, parent=None)
         else:
             tree.parent = None
+        tree = Node(gameState, action=None, parent=None)
         
         #Count number of iterations
         bored_counter = 0
@@ -688,14 +742,15 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             expand(leaf)
             if leaf.children:
                 child = random.choice(leaf.children)
-                result = simulate(child, child.agent_index + 1, self.random_simulation_moves)
+                result = simulate(child, child.agent_index+1)
                 backpropagate(result, child)
             else: #End state
                 result = leaf.state.isWin(), leaf.state.getScore()
                 backpropagate(result, leaf)
             counter +=1
             if self.early_stop:
-                current_top_action = tree.get_action(self.action_selection)
+                current_top_action = tree.get_action(best_child_algorithm=self.choose_action_algo)
+
                 if current_top_action == last_top_action:
                     bored_counter += 1
                     if bored_counter >= self.steps_till_bored:
@@ -706,11 +761,12 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
         #debugging
         #tree.print_tree()
-        #Node.node_id = 0
+        Node.node_id = 0
+
         #Select action from child with best simulation stats
 
         MonteCarloTreeSearchAgent.current_tree = tree
-        action = tree.get_action(self.action_selection)
-
+        action = tree.get_action(best_child_algorithm=self.choose_action_algo)
         return action
 
+    
