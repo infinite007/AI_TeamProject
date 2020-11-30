@@ -2,8 +2,10 @@ class: "EvalAgentTest"
 
 agentName: "MonteCarloTreeSearchAgent"
 layoutName: "smallClassic"
+
 maxTime: "120"
 numGames: "10"
 
 randomSeed: "0"
 ghosts: "[DirectionalGhost(1)]"
+
