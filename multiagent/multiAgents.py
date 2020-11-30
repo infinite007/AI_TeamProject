@@ -505,12 +505,11 @@ class Node():
     def update_score(self, win, score):
         self.times_explored +=1
         if self.agent_index == 0:
-            self.num_wins -= int(win)
+            self.num_wins += 1 - float(win)
             self.score_sum -= score
         else:
-            self.num_wins += int(win)
+            self.num_wins += float(win)
             self.score_sum += score
-
 
 #TODO: Model Ghosts in tree
 class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
