@@ -427,12 +427,24 @@ class Node():
     def best_win_and_score_selection(self):
         """Returns the child with highest metric that balanced score and survivability."""
         # TODO: adjust this function so it works better. The agent still chooses to run into Pacman when it doesn't need to.
-        scores = [1.0 * child.score_sum / child.times_explored + (100.0 * child.num_wins / child.times_explored) if child.times_explored else -float('inf') for child in self.children]
+        best_score = -float('inf')
+        bestIndices = []
+        for current_child in self.children:
+            if current_child.times_explored:
+                average_win = current_child.num_wins / current_child.times_explored
+                if average_win > 0.1:
+                    current_score = (average_win * current_child.score_sum) / current_child.times_explored
+                else:
+                    current_score = average_win
+            else:
+                current_score = -float('inf')
 
-        bestScore = max(scores)
-        bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
-        chosenIndex = random.choice(bestIndices) # Pick randomly among the best
-        return self.children[chosenIndex]
+            if current_score > best_score:
+                bestIndices = [current_child]
+                best_score = current_score
+            elif current_score == best_score:
+                bestIndices.append(current_child)
+        return random.choice(bestIndices) # Pick randomly among the best
 
 
     def explore_exploit_selection(self, explore_algorithm='ucb', explore_variable=''):
@@ -513,14 +525,14 @@ class Node():
 
     def update_score(self, win, score):
         self.times_explored +=1
-        if self.agent_index == 0:
+        if self.agent_index == 1:
 
-            self.num_wins += not win
+            self.num_wins +=  float(win)
 
-            self.score_sum -= score
-        else:
-            self.num_wins += float(win)
             self.score_sum += score
+        else:
+            self.num_wins -= float(not win)
+            self.score_sum -= score
 
 #TODO: Model Ghosts in tree
 class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
@@ -548,6 +560,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         self.steps_till_bored = int(tillBored)
         self.featExtractor = SimpleExtractor()
         self.choose_action_algo = choose_action_algo
+        self.weights = Counter({'eats-food': 326.615053847113, 'closest-food': -22.920237767606736, 'bias': 0.6124765039597753, '#-of-ghosts-1-step-away': -2442.2537145683605})
 
 
     def getAction(self, gameState):
@@ -570,14 +583,19 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
         def q_learning_policy(state):
             #Learned in Project 4
-           # weights = Counter({'eats-food': 272.11667733110255, 'closest-food': -3.896066833142678, 'bias': -24.998479513342076, '#-of-ghosts-1-step-away': -412.72505862648853})
-            weights = Counter({'eats-food': 326.615053847113, 'closest-food': -22.920237767606736, 'bias': 0.6124765039597753, '#-of-ghosts-1-step-away': -2442.2537145683605})
+
             legalMoves = state.getLegalActions(0)
             if legalMoves:
-                scores = [weights*self.featExtractor.getFeatures(state,a) for a in legalMoves]
-                bestIndices = [index for index in range(len(scores)) if scores[index] == max(scores)]
-                chosenIndex = random.choice(bestIndices) # Pick randomly among the best
-                chosenAction = legalMoves[chosenIndex]
+                maxScore = self.weights*self.featExtractor.getFeatures(state,legalMoves[0])
+                maxMoves = [legalMoves[0]]
+                for currentMove in legalMoves[1:]:
+                    currentScore = self.weights*self.featExtractor.getFeatures(state,currentMove)
+                    if maxScore < currentScore:
+                        maxMoves = [currentMove]
+                        maxScore = currentScore
+                    elif maxScore == currentScore:
+                        maxMoves.append(currentMove)
+                chosenAction = random.choice(maxMoves)
                 return state.generateSuccessor(0, chosenAction), chosenAction
             else:
                 return None
@@ -717,7 +735,6 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                         else:
                             ghost = ghosts[agent_index-1]
                             state = state.generateSuccessor(agent_index, ghost.getAction(state))
-
 
                         agent_index += 1
                     agent_index = 0
