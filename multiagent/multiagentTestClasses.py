@@ -473,6 +473,10 @@ class EvalAgentTest(testClasses.TestCase):
         nonTimeouts = self.numGames - stats['timeouts']
         wins = stats['wins']
 
+        if len(agent.number_of_nodes) > 0:
+            averageNodes = sum(agent.number_of_nodes) / len(agent.number_of_nodes)
+            print("Average Nodes: " + str(averageNodes))
+
         def gradeThreshold(value, minimum, thresholds, name):
             points = 0
             passed = (minimum == None) or (value >= minimum)

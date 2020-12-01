@@ -120,7 +120,8 @@ class MultiAgentSearchAgent(Agent):
       is another abstract class.
     """
 
-    def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '2'):
+    number_of_nodes = []
+    def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '4'):
         self.index = 0 # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
@@ -199,6 +200,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       Your minimax agent with alpha-beta pruning (question 3)
     """
 
+    current_number_of_nodes = 0
     def getAction(self, gameState):
         """
           Returns the minimax action using self.depth and self.evaluationFunction
@@ -219,6 +221,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
 
         #For max layers
         def max_value(state, agent_index, depth, alpha, beta):
+            self.current_number_of_nodes += 1
             v = -1e9
             actions = state.getLegalActions(agent_index)
             next_agent_index = (agent_index + 1)%state.getNumAgents()
@@ -236,6 +239,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
 
         #For min layers
         def min_value(state, agent_index, depth, alpha, beta):
+            self.current_number_of_nodes += 1
             v = 1e9
             actions = state.getLegalActions(agent_index)
             next_agent_index = (agent_index + 1)%state.getNumAgents()
@@ -256,6 +260,9 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         alpha = -1e9
         beta = 1e9
         v, action = value(gameState, 0, depth, alpha, beta)
+
+        MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
+        self.current_number_of_nodes = 0
         return action
 
         util.raiseNotDefined()
@@ -265,6 +272,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
       Your expectimax agent (question 4)
     """
 
+    current_number_of_nodes = 0
     def getAction(self, gameState):
         """
           Returns the expectimax action using self.depth and self.evaluationFunction
@@ -285,6 +293,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
                 return min_value(state, agent_index, depth)
 
         def max_value(state, agent_index, depth):
+            self.current_number_of_nodes += 1
             v = -1e9
             actions = state.getLegalActions(agent_index)
             next_states = [state.generateSuccessor(agent_index, a) for a in actions]
@@ -299,6 +308,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
 
         
         def min_value(state, agent_index, depth):
+            self.current_number_of_nodes += 1
             v = 1e9
             actions = state.getLegalActions(agent_index)
             next_states = [state.generateSuccessor(agent_index, a) for a in actions]
@@ -311,6 +321,9 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
 
         depth = 0
         v, action = value(gameState, 0, depth)
+
+        MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
+        self.current_number_of_nodes = 0
         return action
 
         util.raiseNotDefined()
@@ -512,6 +525,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     """
 
     current_tree = None
+    current_number_of_nodes = 0
 
     def __init__(self, steps='200', reuse='False', simDepth='3', choose_action_algo='most_visited', exploreAlg='eg', exploreVar='',
                  randSim='False', pacmanEps='0.9', earlyStop='False', tillBored='100'):
@@ -598,6 +612,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         def expand(leaf):
             """Expands all children of the leaf node"""
             leaf.gen_children()
+            self.current_number_of_nodes += len(leaf.children)
                 
         def backpropagate(result, node):
             """Update stats of all nodes traversed in current simulation"""
@@ -767,6 +782,8 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
         MonteCarloTreeSearchAgent.current_tree = tree
         action = tree.get_action(best_child_algorithm=self.choose_action_algo)
+        MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
+        self.current_number_of_nodes = 0
         return action
 
     
