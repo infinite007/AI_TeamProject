@@ -121,6 +121,8 @@ class MultiAgentSearchAgent(Agent):
     """
 
     number_of_nodes = []
+    depth_of_tree = []
+
     def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '4'):
         self.index = 0 # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
@@ -262,6 +264,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         v, action = value(gameState, 0, depth, alpha, beta)
 
         MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
+        MultiAgentSearchAgent.depth_of_tree.append(self.depth)
         self.current_number_of_nodes = 0
         return action
 
@@ -323,6 +326,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         v, action = value(gameState, 0, depth)
 
         MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
+        MultiAgentSearchAgent.depth_of_tree.append(self.depth)
         self.current_number_of_nodes = 0
         return action
 
@@ -527,8 +531,8 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     current_tree = None
     current_number_of_nodes = 0
 
-    def __init__(self, steps='200', reuse='False', simDepth='3', choose_action_algo='most_visited', exploreAlg='eg', exploreVar='',
-                 randSim='False', pacmanEps='0.9', earlyStop='False', tillBored='100'):
+    def __init__(self, steps='300', reuse='True', simDepth='3', choose_action_algo='most_visited', exploreAlg='eg', exploreVar='',
+                 randSim='False', pacmanEps='0.9', earlyStop='True', tillBored='100'):
         #TODO: Add to command line options
         
 
@@ -674,6 +678,16 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             else:
                 return state.isWin(), state.getScore()
 
+        def tree_depth(node, current_depth=0):
+            max_depth = current_depth
+            if len(node.children) > 0:
+                max_depth = tree_depth(node.children[0], current_depth + 1)
+                for current_child in range(1, len(node.children)):
+                    child_depth = tree_depth(node.children[current_child], current_depth + 1)
+                    if child_depth > max_depth:
+                        max_depth = child_depth
+            return max_depth
+
         def simulate(node, agent_index=0, random_moves=False, heuristic_fn=state_heuristic):
             """Simulate game until end state starting at a given node and choosing all random actions"""
             if random_moves:
@@ -783,6 +797,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         MonteCarloTreeSearchAgent.current_tree = tree
         action = tree.get_action(best_child_algorithm=self.choose_action_algo)
         MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
+        MultiAgentSearchAgent.depth_of_tree.append(tree_depth(tree))
         self.current_number_of_nodes = 0
         return action
 

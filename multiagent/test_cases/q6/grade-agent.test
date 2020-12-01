@@ -3,7 +3,7 @@ class: "EvalAgentTest"
 agentName: "MonteCarloTreeSearchAgent"
 layoutName: "smallClassic"
 
-maxTime: "120"
+maxTime: "14000"
 numGames: "10"
 
 randomSeed: "0"

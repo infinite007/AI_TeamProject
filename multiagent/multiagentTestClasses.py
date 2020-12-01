@@ -477,6 +477,13 @@ class EvalAgentTest(testClasses.TestCase):
             averageNodes = sum(agent.number_of_nodes) / len(agent.number_of_nodes)
             print("Average Nodes: " + str(averageNodes))
 
+        print("Average Time: " + str(totalTime / len(games)))
+
+        if len(agent.depth_of_tree) > 0:
+            averageDepth = sum(agent.depth_of_tree) / len(agent.depth_of_tree)
+            print("Average Tree Depth: " + str(averageDepth))
+
+
         def gradeThreshold(value, minimum, thresholds, name):
             points = 0
             passed = (minimum == None) or (value >= minimum)
