@@ -454,11 +454,16 @@ class Node():
 
 
     def explore_exploit_selection(self, explore_algorithm='ucb', explore_variable=''):
-
         if explore_algorithm == 'ucb':
-            return self.upper_confidence_bound()
+            if explore_variable == '':
+                return self.upper_confidence_bound()
+            else:
+                return self.upper_confidence_bound(float(explore_variable))
         else:
-            return self.epsilon_greed_search()
+            if explore_variable == '':
+                return self.epsilon_greed_search()
+            else:
+                return self.epsilon_greed_search(float(explore_variable))
 
     def epsilon_greed_search(self, exploit_weight=0.8):
         """Weights random exploration vs. exploitation"""
@@ -473,7 +478,7 @@ class Node():
             chosenIndex = random.choice(range(len(self.children)))
         return self.children[chosenIndex]
 
-    def upper_confidence_bound(self, c=50):
+    def upper_confidence_bound(self, c=50.0):
         """Returns the child with the highest upper confidence bound score."""
 
         scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
@@ -634,7 +639,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 return tree
             #TODO: Write a better SELECT method
             #best_child = tree.best_score_selection()
-            best_child = tree.explore_exploit_selection()
+            best_child = tree.explore_exploit_selection(self.action_exploration,self.explore_algorithm_variable)
             return select(best_child)
 
         def expand(leaf):
