@@ -806,7 +806,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 backpropagate(result, leaf)
             counter +=1
             current_win_rate = (0.9 * current_win_rate) + (0.1 * result[0])
-            if current_win_rate < 0.1:
+            if current_win_rate < 0.2:
                 bored_counter = 0
             elif self.early_stop:
                 current_top_action = tree.get_action(best_child_algorithm=self.choose_action_algo)
