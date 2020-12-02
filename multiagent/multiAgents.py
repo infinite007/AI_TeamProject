@@ -133,7 +133,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
     """
       Your minimax agent (question 2)
     """
-
+    current_number_of_nodes = 0
     def getAction(self, gameState):
         """
           Returns the minimax action from the current gameState using self.depth
@@ -168,6 +168,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
 
         #For max layers
         def max_value(state, agent_index, depth):
+            self.current_number_of_nodes += 1
             v = -1e9
             actions = state.getLegalActions(agent_index)
             next_states = [state.generateSuccessor(agent_index, a) for a in actions]
@@ -182,6 +183,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
 
         #For min layers
         def min_value(state, agent_index, depth):
+            self.current_number_of_nodes += 1
             v = 1e9
             actions = state.getLegalActions(agent_index)
             next_states = [state.generateSuccessor(agent_index, a) for a in actions]
@@ -196,6 +198,9 @@ class MinimaxAgent(MultiAgentSearchAgent):
 
         depth = 0
         v, action = value(gameState, 0, depth)
+        MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
+        MultiAgentSearchAgent.depth_of_tree.append(self.depth)
+        self.current_number_of_nodes = 0
         return action
     
 class AlphaBetaAgent(MultiAgentSearchAgent):
