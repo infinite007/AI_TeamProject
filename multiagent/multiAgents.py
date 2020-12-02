@@ -792,6 +792,8 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         counter = 0
 
         last_top_action = -1
+        current_win_rate = 1
+
         while counter < self.steps_allowed:
             leaf = select(tree)
             expand(leaf)
@@ -803,7 +805,10 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 result = leaf.state.isWin(), leaf.state.getScore()
                 backpropagate(result, leaf)
             counter +=1
-            if self.early_stop:
+            current_win_rate = (0.9 * current_win_rate) + (0.1 * result[0])
+            if current_win_rate < 0.1:
+                bored_counter = 0
+            elif self.early_stop:
                 current_top_action = tree.get_action(best_child_algorithm=self.choose_action_algo)
 
                 if current_top_action == last_top_action:
