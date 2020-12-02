@@ -549,7 +549,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     current_number_of_nodes = 0
 
     def __init__(self, steps='300', reuse='True', simDepth='3', choose_action_algo='most_visited', exploreAlg='eg', exploreVar='',
-                 randSim='False', pacmanEps='0.9', earlyStop='True', tillBored='100', simEps='0.2'):
+                 randSim='False', pacmanEps='0.9', earlyStop='True', tillBored='100', optimism='0.2'):
         #TODO: Add to command line options
         
 
@@ -566,7 +566,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         self.featExtractor = SimpleExtractor()
         self.choose_action_algo = choose_action_algo
         self.weights = Counter({'eats-food': 326.615053847113, 'closest-food': -22.920237767606736, 'bias': 0.6124765039597753, '#-of-ghosts-1-step-away': -2442.2537145683605}) #weights to use in rollout policy based on RL with features from Project 4
-        self.simulation_ghost_epsilon = float(simEps)
+        self.simulation_ghost_epsilon = float(optimism)
 
 
     def getAction(self, gameState):
@@ -730,7 +730,10 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
             else:
                 state = node.state
                 
-
+                if random.random() < self.simulation_ghost_epsilon:
+                    ghosts = [RandomGhost(i+1) for i in range(state.getNumAgents())]
+                else:
+                    ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
                 for current_turn in range(self.simulation_depth):
                     while agent_index < state.getNumAgents():
                         if state.isWin() or state.isLose():# or count == max_steps:
@@ -739,12 +742,6 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                             state, action = q_learning_policy(state)
                             #state, action = epsilon_greedy_policy(state, agent_index=0)
                         else:
-                            r = random.random()
-                            if r < self.simulation_ghost_epsilon:
-                                ghosts = [RandomGhost(i+1) for i in range(state.getNumAgents())]
-                            else:
-                                ghosts = [DirectionalGhost(i+1) for i in range(state.getNumAgents())]
-
                             ghost = ghosts[agent_index-1]
                             state = state.generateSuccessor(agent_index, ghost.getAction(state))
 
