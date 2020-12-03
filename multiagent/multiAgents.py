@@ -21,6 +21,7 @@ from util import manhattanDistance, Counter
 from game import Directions
 import random, util
 import math
+import time
 from game import Agent
 from ghostAgents import DirectionalGhost
 from ghostAgents import RandomGhost
@@ -123,6 +124,7 @@ class MultiAgentSearchAgent(Agent):
 
     number_of_nodes = []
     depth_of_tree = []
+    time_per_moves = []
 
     def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '4'):
         self.index = 0 # Pacman is always agent index 0
@@ -197,9 +199,12 @@ class MinimaxAgent(MultiAgentSearchAgent):
             return v, action
 
         depth = 0
+        start_time = time.time()
         v, action = value(gameState, 0, depth)
+        end_time = time.time()
+        MultiAgentSearchAgent.time_per_moves.append(end_time - start_time)
         MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
-        MultiAgentSearchAgent.depth_of_tree.append(self.depth)
+        MultiAgentSearchAgent.depth_of_tree.append(self.depth * gameState.getNumAgents())
         self.current_number_of_nodes = 0
         return action
     
@@ -267,10 +272,12 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         depth = 0
         alpha = -1e9
         beta = 1e9
+        start_time = time.time()
         v, action = value(gameState, 0, depth, alpha, beta)
-
+        end_time = time.time()
+        MultiAgentSearchAgent.time_per_moves.append(end_time - start_time)
         MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
-        MultiAgentSearchAgent.depth_of_tree.append(self.depth)
+        MultiAgentSearchAgent.depth_of_tree.append(self.depth * gameState.getNumAgents())
         self.current_number_of_nodes = 0
         return action
 
@@ -329,10 +336,13 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
             return v, action
 
         depth = 0
+        start_time = time.time()
         v, action = value(gameState, 0, depth)
+        end_time = time.time()
+        MultiAgentSearchAgent.time_per_moves.append(end_time - start_time)
 
         MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
-        MultiAgentSearchAgent.depth_of_tree.append(self.depth)
+        MultiAgentSearchAgent.depth_of_tree.append(self.depth * gameState.getNumAgents())
         self.current_number_of_nodes = 0
         return action
 
@@ -554,7 +564,8 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     current_number_of_nodes = 0
 
     def __init__(self, steps='300', reuse='True', simDepth='3', choose_action_algo='most_visited', exploreAlg='eg', exploreVar='',
-                 randSim='False', pacmanEps='0.9', earlyStop='True', tillBored='100', optimism='0.2'):
+                 randSim='False', pacmanEps='0.9', earlyStop='True', tillBored='100', optimism='0.2', panics='True',
+                 simRelevance='0.1', dangerZone='0.2'):
         #TODO: Add to command line options
         
 
@@ -572,6 +583,9 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         self.choose_action_algo = choose_action_algo
         self.weights = Counter({'eats-food': 326.615053847113, 'closest-food': -22.920237767606736, 'bias': 0.6124765039597753, '#-of-ghosts-1-step-away': -2442.2537145683605}) #weights to use in rollout policy based on RL with features from Project 4
         self.simulation_ghost_epsilon = float(optimism)
+        self.panics = panics == 'True'  # Whether the agent will avoid early stopping if the win rate is to low.
+        self.last_simulation_weight = float(simRelevance)  # What percentage of the combined win rate will the last simulation make up.
+        self.panic_percent = float(dangerZone)  # Win rates below this percentage will prevent the agent from early stopping.
 
 
     def getAction(self, gameState):
@@ -779,6 +793,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         # 4. Backpropagate #
         ####################
 
+        start_time = time.time()
 
         # Instantiate root node
         if MonteCarloTreeSearchAgent.current_tree is not None and self.reuse_tree:
@@ -810,10 +825,12 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
                 result = leaf.state.isWin(), leaf.state.getScore()
                 backpropagate(result, leaf)
             counter +=1
-            current_win_rate = (0.9 * current_win_rate) + (0.1 * result[0])
-            if current_win_rate < 0.2:
-                bored_counter = 0
-            elif self.early_stop:
+
+            if self.early_stop:
+                if self.panics:
+                    current_win_rate = ((1 - self.last_simulation_weight) * current_win_rate) + (self.last_simulation_weight * result[0])
+                    if current_win_rate <= self.panic_percent:
+                        bored_counter = -1
                 current_top_action = tree.get_action(best_child_algorithm=self.choose_action_algo)
 
                 if current_top_action == last_top_action:
@@ -832,9 +849,9 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
 
         MonteCarloTreeSearchAgent.current_tree = tree
         action = tree.get_action(best_child_algorithm=self.choose_action_algo)
+        end_time = time.time()
+        MultiAgentSearchAgent.time_per_moves.append(end_time - start_time)
         MultiAgentSearchAgent.number_of_nodes.append(self.current_number_of_nodes)
         MultiAgentSearchAgent.depth_of_tree.append(tree_depth(tree))
         self.current_number_of_nodes = 0
         return action
-
-    

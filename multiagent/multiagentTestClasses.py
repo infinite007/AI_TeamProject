@@ -479,9 +479,15 @@ class EvalAgentTest(testClasses.TestCase):
 
         print("Average Time: " + str(totalTime / len(games)))
 
+        if len(agent.time_per_moves) > 0:
+            averageTimePerMove = sum(agent.time_per_moves) / len(agent.time_per_moves)
+            print("Average Time Per Move: " + str(averageTimePerMove))
+
         if len(agent.depth_of_tree) > 0:
             averageDepth = sum(agent.depth_of_tree) / len(agent.depth_of_tree)
             print("Average Tree Depth: " + str(averageDepth))
+
+
 
 
         def gradeThreshold(value, minimum, thresholds, name):
