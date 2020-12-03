@@ -1,6 +1,6 @@
 class: "EvalAgentTest"
 
-agentName: "ExpecitmaxAgent"
+agentName: "ExpectimaxAgent"
 agentArgs: "evalFn=better"
 layoutName: "mediumClassic"
 
