@@ -1,18 +1,11 @@
 class: "EvalAgentTest"
 
-agentName: "ReflexAgent"
-layoutName: "openClassic"
-maxTime: "120"
-numGames: "10"
+agentName: "AlphaBetaAgent"
+agentArgs: "evalFn=better"
+layoutName: "smallClassic"
 
+maxTime: "14000"
+numGames: "20"
 
-nonTimeoutMinimum: "10"
-
-scoreThresholds: "500 1000"
-
-winsMinimum: "1"
-winsThresholds: "5 10"
-
-
-randomSeed: "0"
-ghosts: "[RandomGhost(1)]"
+randomSeed: "38548767"
+ghosts: "[RandomGhost(1), RandomGhost(2)]"
