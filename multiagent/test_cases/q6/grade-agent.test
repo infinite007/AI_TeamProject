@@ -1,12 +1,12 @@
 class: "EvalAgentTest"
 
 agentName: "MonteCarloTreeSearchAgent"
-agentArgs: "steps=500,reuse=True,simDepth=10,choose_action_algo=best_combination,exploreAlg=ucb,exploreVar=250,randSim=False,earlyStop=True,tillBored=40,panics=True,simRelevance=0.1,dangerZone=0.2"
-layoutName: "smallClassic"
+agentArgs: "steps=500,reuse=True,simDepth=10,choose_action_algo=best_combination,exploreAlg=ucb,exploreVar=250,randSim=False,earlyStop=True,tillBored=40,optimism=0.1,panics=True,simRelevance=0.1,dangerZone=0.2"
+layoutName: "mediumClassic"
 
 maxTime: "14000"
-numGames: "1"
+numGames: "20"
 
-randomSeed: "11302020"
+randomSeed: "38548767"
 ghosts: "[DirectionalGhost(1), DirectionalGhost(2)]"
 
