@@ -488,7 +488,7 @@ class Node():
             chosenIndex = random.choice(range(len(self.children)))
         return self.children[chosenIndex]
 
-    def upper_confidence_bound(self, c=50.0):
+    def upper_confidence_bound(self, c=150.0):
         """Returns the child with the highest upper confidence bound score."""
 
         scores = [(1.0 * child.score_sum / child.times_explored) + (c * (math.log(self.times_explored)/child.times_explored)) if child.times_explored else float('inf') for child in self.children]
@@ -563,7 +563,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     current_tree = None
     current_number_of_nodes = 0
 
-    def __init__(self, steps='300', reuse='True', simDepth='3', choose_action_algo='most_visited', exploreAlg='eg', exploreVar='',
+    def __init__(self, steps='300', reuse='True', simDepth='3', choose_action_algo='most_visited', exploreAlg='ucb', exploreVar='',
                  randSim='False', pacmanEps='0.9', earlyStop='True', tillBored='100', optimism='0.2', panics='True',
                  simRelevance='0.1', dangerZone='0.2'):
         #TODO: Add to command line options
