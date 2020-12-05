@@ -563,8 +563,8 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
     current_tree = None
     current_number_of_nodes = 0
 
-    def __init__(self, steps='300', reuse='True', simDepth='3', choose_action_algo='most_visited', exploreAlg='ucb', exploreVar='',
-                 randSim='False', pacmanEps='0.9', earlyStop='True', tillBored='100', optimism='0.2', panics='True',
+    def __init__(self, steps='500', reuse='True', simDepth='10', chooseAlg='best_combination', exploreAlg='ucb', exploreVar='',
+                 randSim='False', pacmanEps='0.9', earlyStop='True', tillBored='80', optimism='0.2', panics='True',
                  simRelevance='0.1', dangerZone='0.2'):
         #TODO: Add to command line options
         
@@ -580,7 +580,7 @@ class MonteCarloTreeSearchAgent(MultiAgentSearchAgent):
         self.early_stop = earlyStop == 'True'
         self.steps_till_bored = int(tillBored)
         self.featExtractor = SimpleExtractor()
-        self.choose_action_algo = choose_action_algo
+        self.choose_action_algo = chooseAlg
         self.weights = Counter({'eats-food': 326.615053847113, 'closest-food': -22.920237767606736, 'bias': 0.6124765039597753, '#-of-ghosts-1-step-away': -2442.2537145683605}) #weights to use in rollout policy based on RL with features from Project 4
         self.simulation_ghost_epsilon = float(optimism)
         self.panics = panics == 'True'  # Whether the agent will avoid early stopping if the win rate is to low.
