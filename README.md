@@ -72,7 +72,7 @@ python pacman.py -p MonteCarloTreeSearchAgent -l mediumClassic
 
 *steps:* 500
 
-*tillBored: 80
+*tillBored:* 80
 
 **Example Running Monte Carlo Tree Search With Custom Parameters:**
 
