@@ -109,11 +109,20 @@ All the test cases have been modified and expanded. All the below examples use t
 
 *q14:* MonteCarloTreeSearchAgent on mediumClassic layout with two adversarial ghosts.
 
+*q15:* MonteCarloTreeSearchAgent on originalClassic layout with four random ghosts.
+
+*q16:* ExpectimaxAgent on originalClassic layout with four random ghosts.
+
 
 **Modified Files:**
+
 
 Two files were modified from Project 2: multiAgents.py and multiagentTestClasses.py.
 
 * *multiAgents.py:* Added Node and MonteCarlTreeSearchAgent classes to the file. Also modified MultiAgentSearchAgent, MinimaxAgent, AlphaBetaAgent, and ExpectimaxAgent to add number of nodes, tree depth, and time per move metrics.
 
 * *multiagentTestclasses.py:* Modified EvalAgentTest class to display these new metrics.
+
+**Project Results:**
+
+Included in the project repository is the file "Project Results.xlsx" which includes all the results from all the tests run during this project.
