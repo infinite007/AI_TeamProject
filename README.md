@@ -1,4 +1,5 @@
 # AI_TeamProject
+# Group 10
 
 This repository contains code for the implementation of Monte Carlo Tree Search algorithm for a PacMan agent.
 
@@ -126,3 +127,10 @@ Two files were modified from Project 2: multiAgents.py and multiagentTestClasses
 **Project Results:**
 
 Included in the project repository is the file "Project Results.xlsx" which includes all the results from all the tests run during this project.
+
+**Statistical Analysis and Plotting Code**
+Our stats analysis and plots are documented in the jupyter notebook file:
+
+    ./multiagent/plots.ipynb.
+
+It is not necessary to run this code to use our MCTS Agent, but to reproduce the plots in our paper, the dependencies listed in requirements.txt must be installed (pip install -r requirements.txt), then each cell in the jupyter notebook should be executed.
